@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { withFilter } from 'apollo-server';
 
 import { pubSub } from '../utils/apollo-server';
+import { checkIfSenderIsAuthor } from '../utils/check-if-sender-is-author';
 import { MESSAGE_CREATED, NEW_CONVERSATION } from '../constants/Subscriptions';
 
 const Query = {
@@ -114,8 +115,10 @@ const Mutation = {
   createMessage: async (
     root,
     { input: { message, sender, receiver } },
-    { Message, User }
+    { Message, User, authUser }
   ) => {
+    checkIfSenderIsAuthor(authUser.id, sender);
+
     let newMessage = await new Message({
       message,
       sender,
@@ -172,8 +175,10 @@ const Mutation = {
   updateMessageSeen: async (
     root,
     { input: { sender, receiver } },
-    { Message }
+    { Message, authUser }
   ) => {
+    checkIfSenderIsAuthor(authUser.id, receiver);
+
     try {
       await Message.update(
         { receiver, sender, seen: false },

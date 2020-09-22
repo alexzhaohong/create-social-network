@@ -1,4 +1,5 @@
 import { uploadToCloudinary, deleteFromCloudinary } from '../utils/cloudinary';
+import { checkIfSenderIsAuthor } from '../utils/check-if-sender-is-author';
 
 const Query = {
   /**
@@ -135,8 +136,10 @@ const Mutation = {
   createPost: async (
     root,
     { input: { title, image, authorId } },
-    { Post, User }
+    { Post, User, authUser }
   ) => {
+    checkIfSenderIsAuthor(authUser.id, authorId);
+
     if (!title && !image) {
       throw new Error('Post title or image is required.');
     }
@@ -180,8 +183,12 @@ const Mutation = {
   deletePost: async (
     root,
     { input: { id, imagePublicId } },
-    { Post, Like, User, Comment, Notification }
+    { Post, Like, User, Comment, Notification, authUser }
   ) => {
+    const getPost = await Post.findById(id);
+
+    checkIfSenderIsAuthor(authUser.id, getPost.author.toString());
+
     // Remove post image from cloudinary, if imagePublicId is present
     if (imagePublicId) {
       const deleteImage = await deleteFromCloudinary(imagePublicId);
@@ -194,7 +201,7 @@ const Mutation = {
     }
 
     // Find post and remove it
-    const post = await Post.findByIdAndRemove(id);
+    const post = await Post.findByIdAndRemove(getPost.id);
 
     // Delete post from authors (users) posts collection
     await User.findOneAndUpdate(

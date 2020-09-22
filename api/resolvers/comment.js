@@ -1,3 +1,5 @@
+import { checkIfSenderIsAuthor } from '../utils/check-if-sender-is-author';
+
 const Mutation = {
   /**
    * Creates a post comment
@@ -9,8 +11,10 @@ const Mutation = {
   createComment: async (
     root,
     { input: { comment, author, postId } },
-    { Comment, Post, User }
+    { Comment, Post, User, authUser }
   ) => {
+    checkIfSenderIsAuthor(authUser.id, author);
+
     const newComment = await new Comment({
       comment,
       author,
@@ -35,8 +39,16 @@ const Mutation = {
    *
    * @param {string} id
    */
-  deleteComment: async (root, { input: { id } }, { Comment, User, Post }) => {
-    const comment = await Comment.findByIdAndRemove(id);
+  deleteComment: async (
+    root,
+    { input: { id } },
+    { Comment, User, Post, authUser }
+  ) => {
+    const getComment = await Comment.findById(id);
+
+    checkIfSenderIsAuthor(authUser.id, getComment.author.toString());
+
+    const comment = await Comment.findByIdAndRemove(getComment.id);
 
     // Delete comment from users collection
     await User.findOneAndUpdate(

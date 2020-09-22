@@ -1,3 +1,5 @@
+import { checkIfSenderIsAuthor } from '../utils/check-if-sender-is-author';
+
 const Mutation = {
   /**
    * Creates a following/follower relationship between users
@@ -8,8 +10,15 @@ const Mutation = {
   createFollow: async (
     root,
     { input: { userId, followerId } },
-    { Follow, User }
+    { Follow, User, authUser }
   ) => {
+    // Prevent user to follow himself
+    if (userId === followerId) {
+      throw new Error('Bad request.');
+    }
+
+    checkIfSenderIsAuthor(authUser.id, followerId);
+
     const follow = await new Follow({
       user: userId,
       follower: followerId,
@@ -32,8 +41,12 @@ const Mutation = {
    *
    * @param {string} id follow id
    */
-  deleteFollow: async (root, { input: { id } }, { Follow, User }) => {
-    const follow = await Follow.findByIdAndRemove(id);
+  deleteFollow: async (root, { input: { id } }, { Follow, User, authUser }) => {
+    const getFollow = await Follow.findById(id);
+
+    checkIfSenderIsAuthor(authUser.id, getFollow.follower.toString());
+
+    const follow = await Follow.findByIdAndRemove(getFollow.id);
 
     // Delete follow from users collection
     await User.findOneAndUpdate(

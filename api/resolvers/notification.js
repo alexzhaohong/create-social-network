@@ -1,6 +1,7 @@
 import { withFilter } from 'apollo-server';
 
 import { pubSub } from '../utils/apollo-server';
+import { checkIfSenderIsAuthor } from '../utils/check-if-sender-is-author';
 import { NOTIFICATION_CREATED_OR_DELETED } from '../constants/Subscriptions';
 
 const Query = {
@@ -47,8 +48,15 @@ const Mutation = {
     {
       input: { userId, authorId, postId, notificationType, notificationTypeId },
     },
-    { Notification, User }
+    { Notification, Like, User, authUser }
   ) => {
+    // Prevent user to follow himself
+    if (userId === authorId) {
+      throw new Error('Bad request.');
+    }
+
+    checkIfSenderIsAuthor(authUser.id, authorId);
+
     let newNotification = await new Notification({
       author: authorId,
       user: userId,

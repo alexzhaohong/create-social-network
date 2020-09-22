@@ -1,3 +1,5 @@
+import { checkIfSenderIsAuthor } from '../utils/check-if-sender-is-author';
+
 const Mutation = {
   /**
    * Creates a like for post
@@ -8,8 +10,10 @@ const Mutation = {
   createLike: async (
     root,
     { input: { userId, postId } },
-    { Like, Post, User }
+    { Like, Post, User, authUser }
   ) => {
+    checkIfSenderIsAuthor(authUser.id, userId);
+
     const like = await new Like({ user: userId, post: postId }).save();
 
     // Push like to post collection
@@ -24,8 +28,16 @@ const Mutation = {
    *
    * @param {string} id
    */
-  deleteLike: async (root, { input: { id } }, { Like, User, Post }) => {
-    const like = await Like.findByIdAndRemove(id);
+  deleteLike: async (
+    root,
+    { input: { id } },
+    { Like, User, Post, authUser }
+  ) => {
+    const getLike = await Like.findById(id);
+
+    checkIfSenderIsAuthor(authUser.id, getLike.user.toString());
+
+    const like = await Like.findByIdAndRemove(getLike.id);
 
     // Delete like from users collection
     await User.findOneAndUpdate(
